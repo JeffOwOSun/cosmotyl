@@ -1,0 +1,21 @@
+# Local personal source material and work notes
+.private/
+# Credentials and machine configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+.idea/
+.vscode/
+# Python / generated working files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+src/*.scad
+src/*.stl
+src/*.png
