@@ -19,3 +19,4 @@ venv/
 src/*.scad
 src/*.stl
 src/*.png
+.ruff_cache/

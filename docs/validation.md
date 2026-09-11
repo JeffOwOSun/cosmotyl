@@ -1,49 +1,52 @@
-# Public release validation
+# Geometry validation
 
-Reviewed on 2026-09-10 with Python 3.14.7 and OpenSCAD 2021.01 on macOS.
+Validated with Python 3.14.7, Manifold 3.5.3, and independent OpenSCAD 2021.01
+STL re-import checks on macOS. CI also runs the build on Python 3.10 and 3.14.
 
-## Passed
+## Screw-cutout repair
 
-- Seven regression tests: binary STL vertex parsing, the default 29-key
-  layout, sampled headroom rejection, and interference-check failure cases.
-- SCAD generation for v1, v3, and v4 without requiring a renderer (`--fast`).
-- Default keycap OBB check: zero collisions. Sampled bay heights: battery
-  20.2 mm and controller 25.9 mm, compared with a 9.0 mm battery/base envelope.
-- Offline viewer rebuilt and visually inspected; left-half toggle and
-  separation slider exercised in a browser.
-- Public file set scanned with Gitleaks 8.30.1: no secrets detected.
-  Personal workstation links and personal hand analysis were removed.
-  Included screenshots have no text or EXIF metadata chunks.
-- Vendored three.js matched upstream r147 after removing surrounding
-  whitespace; the repository now includes the exact upstream build and MIT
-  notice. The generated viewer has no remote script dependency.
+The original vertical counterbores broke through several sloping webs, leaving
+missing portions of the screw-head bearing surface. The repair adds explicit
+flat pads (radius 3.3 mm, 3.4 mm thick) around the 3.4 mm shaft clearances,
+while preserving the 6 mm counterbores. Heads sit 0.4 mm lower than before.
+Matching base columns are revolved as single solids and stop 0.15 mm below
+each pad underside, with blind
+pilot bores leaving at least 1 mm of base material.
 
-## Failed: v4 top sheet is not accepted as a closed STL solid
+Plate/web joins are inset 0.1 mm from plate edges and 0.02 mm from their upper
+and lower faces to avoid coincident face remnants. Clip relief cuts extend
+below the plate instead of ending exactly on its lower face. A 0.05 mm
+clearance envelope removes small intrusions into the modeled switch volume.
 
-The full v4 build renders its top, base, and switch envelope, then OpenSCAD
-reports this during the STL-based interference check:
+The v4 build uses Manifold on the same literal geometry that it writes to
+SCAD, then validates the serialized binary STL files. This avoids the fragile
+CGAL export path in OpenSCAD 2021.01; see the upstream
+[quantization discussion](https://github.com/openscad/openscad/issues/4969).
+OpenSCAD remains useful for viewing the generated SCAD and independently
+checking the final STL geometry.
 
-```text
-ERROR: The given mesh is not closed! Unable to convert to CGAL_Nef_Polyhedron.
-Current top level object is empty.
-```
+## Required checks
 
-An isolated re-import check identifies `top4_right.stl` as the affected mesh.
-The switch-envelope STL converts successfully. The exact defect in the upper
-sheet geometry has not yet been repaired. An empty intersection following a
-conversion error provides no evidence of switch clearance.
+- No OBB collisions in the default 29-key layout.
+- Every printed STL has two consistently oriented incident faces per edge,
+  no degenerate triangles, and the expected component count: two for the
+  assembled top, one each for the base and the individual print files.
+- All seven screw shafts are open. At three radii and 64 angles per radius,
+  each bearing ring has a flat upper seat and at least 1.5 mm of material.
+- Column-top probes match each pad underside with a 0.15 mm gap.
+- Top/switch, base/switch, top/base, and all seven screw-head/switch
+  intersections are empty. These checks use the serialized meshes.
+- The three print files rest at Z=0. The finger sheet and pod retain the
+  selected −90° rotation about Y.
+- The offline viewer rebuilds from the current example meshes and exposes
+  the top and base independently. Five obsolete v1/v3 STL files were removed.
 
-The old gate accepted the “empty” message even after this error. The release
-fix rejects warnings/errors before considering an empty intersection valid,
-and exits nonzero instead of exporting new print parts after a failed check.
-The prebuilt meshes in `output/` are retained from the earlier prototype;
-they have not passed this corrected gate. The published viewer uses those
-prebuilt meshes consistently.
+## Remaining limitations
 
-## Remaining design work
+The print-orientation heuristic reports one unresolved finger-sheet patch
+(approximately 810 mm²). These geometric checks do not establish physical
+print quality, comfort, strength, or assembly fit with real hardware.
+Electronics mounting and the v4 wrist rest remain unfinished.
 
-Repair the top-sheet mesh and rerun the full interference and topology
-checks. Then evaluate the two reported overhang patches, real hardware fit,
-physical assembly, and printed parts. Electronics mounting and v4 wrist-rest
-integration are also unfinished. CI checks Python behavior and SCAD/viewer
-generation; it does not claim a successful full OpenSCAD render.
+Personal hand analysis remains excluded, and the release retains the
+three.js license notice and fully offline viewer resources.

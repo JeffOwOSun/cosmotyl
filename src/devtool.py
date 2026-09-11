@@ -27,19 +27,20 @@ def _box(m, w, d, z1, z2):
             % (scad_mat(m), (z1 + z2) / 2, w, d, abs(z2 - z1)))
 
 
-def key_devtool(m):
+def key_devtool(m, clearance=0.0):
+    e = clearance
     return [
-        _frustum(m, 18.2, 2.2, 14.5, 16.1),      # XDA cap incl. 4mm travel
-        _box(m, 15.6, 15.6, 0.0, 6.2),           # upper housing
-        _box(m, 14.0, 14.0, -CASE.plate_t - 0.8, 0.0),  # lower housing
-        _box(m, 4.0, 4.0, -CASE.plate_t - 4.1, -CASE.plate_t - 0.8),  # pins
+        _frustum(m, 18.2 + 2*e, 2.2 - e, 14.5 + 2*e, 16.1 + e),      # XDA cap incl. 4mm travel
+        _box(m, 15.6 + 2*e, 15.6 + 2*e, -e, 6.2 + e),           # upper housing
+        _box(m, 14.0 + 2*e, 14.0 + 2*e, -CASE.plate_t - 0.8 - e, e),  # lower housing
+        _box(m, 4.0 + 2*e, 4.0 + 2*e, -CASE.plate_t - 4.1 - e, -CASE.plate_t - 0.8 + e),  # pins
     ]
 
 
-def devtool_scad(layout):
+def devtool_scad(layout, clearance=0.0):
     solids = []
     for _, m in layout.items():
-        solids += key_devtool(m)
+        solids += key_devtool(m, clearance)
     return ('// Devtool: switches + XDA caps + travel envelopes (NOT printed).\n'
             'union() {\n' + '\n'.join(solids) + '\n}\n')
 

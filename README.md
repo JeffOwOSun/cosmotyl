@@ -4,19 +4,18 @@ A Python + OpenSCAD generator for a split ergonomic keyboard with curved,
 floating key plates, a three-key thumb pod, and a flat base with screw columns.
 The default layout has **29 keys per half**: 26 finger keys and 3 thumb keys.
 
-![Cosmotyl v4](docs/img/v4_viewer.png)
+![Cosmotyl v4 repaired screw seats](docs/img/v4_screw_seats.png)
 
 The current v4 design prints as three parts per half: a finger sheet, a thumb
-pod, and a base. Earlier v1 (walled case) and v3 (support rods) designs are kept
-for comparison. This is a prototype: electronics mounting and wrist-rest
-integration are unfinished, and the overhang audit still flags two patches.
-Physical assembly and support-free printing have not been established by the
-checks in this repository.
+pod, and a base. Each screw recess has a continuous 3.4 mm thick bearing pad;
+matching columns end 0.15 mm below the pad. The generated and exported meshes
+pass closed-surface, bearing-seat, switch-envelope, screw-head, and assembly
+interference checks. See [validation notes](docs/validation.md).
 
-**Known build issue:** OpenSCAD 2021.01 renders the v4 top sheet but rejects
-its STL as a closed solid when re-importing it for the interference check.
-The full build now stops at that error. The supplied meshes are retained as
-prototype artifacts; see [validation notes](docs/validation.md).
+This remains a prototype: electronics mounting, wrist-rest integration, and
+physical print/assembly trials are unfinished. The overhang heuristic still
+flags one patch on the finger sheet. Earlier v1 and v3 source generators are
+kept for reference; their obsolete STL exports have been removed.
 
 ## Explore the design
 
@@ -24,21 +23,25 @@ Download or clone the repository and open
 [`output/keywell_viewer.html`](output/keywell_viewer.html) in a WebGL-capable
 browser. It embeds the meshes and three.js and works offline. Drag to orbit,
 scroll to zoom, and use the controls to inspect the parts, mirrored left half,
-switch envelopes, and thumb placement geometry. GitHub's HTML file view shows
-source; download the file to run it.
+switch envelopes, and thumb placement geometry. Top and base have separate
+toggles. GitHub's HTML file view shows source; download the file to run it.
 
 ## Generate
 
-Python 3.10+ is required; there are no third-party Python dependencies.
-Install OpenSCAD for STL rendering. It is found on `PATH` or in the standard
-macOS application location; set `OPENSCAD` to an executable path to override.
+Python 3.10+ is required. The v4 mesh pipeline uses Manifold and NumPy to
+preserve solid topology through Boolean operations and binary STL export.
+The build evaluates the same literal geometry it writes to SCAD. OpenSCAD is
+optional for inspecting that SCAD and required for the historical v1/v3 builds.
 
 From the repository root:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
 python3 src/verify.py          # keycap collision and bay headroom checks
 python3 src/main4.py --fast    # check layout and write SCAD, no renderer needed
-python3 src/main4.py           # render v4, check interference, audit and split top
+python3 src/main4.py           # mesh v4, verify seats/clearances, split print parts
 python3 src/gen_viewer.py      # rebuild the offline viewer
 python3 src/gen_viewer.py --prebuilt # use only the published example meshes
 python3 -m unittest discover -s tests -v
@@ -46,10 +49,12 @@ python3 -m unittest discover -s tests -v
 
 Generators write working SCAD/STL files beside the sources in `src/`; these
 are ignored by Git. The viewer prefers these fresh meshes and falls back to
-prebuilt files in `output/`. After changing the layout, regenerate every
-variant you intend to compare: old fallback meshes do not update themselves.
+prebuilt files in `output/`. After changing the layout, regenerate v4 before
+rebuilding the viewer.
+`--prebuilt` uses the checked-in example meshes exclusively.
 
-Historical builds:
+Historical builds require OpenSCAD on `PATH`, in the standard macOS app
+location, or configured through the `OPENSCAD` executable path:
 
 ```bash
 python3 src/main3.py --fast    # omit --fast to render the v3 body
@@ -94,11 +99,14 @@ The included v4 meshes are:
 
 Mirror the right-hand parts in the slicer for a left half. Inspect overhangs
 and bed contact in the slicer before printing: the area/patch checks are
-heuristics, and two patches on the finger sheet remain unresolved.
+heuristics, and one patch on the finger sheet remains unresolved.
 
 The modeled hardware per half is 29 MX-style switches with XDA caps and seven
 3.0 × 12 mm thread-forming screws with pan heads. Screws enter from above
 before switches are installed; columns have 2.5 mm pilot bores and 6 mm necks.
+The 6 mm counterbores have uninterrupted bearing rings around the 3.4 mm
+clearance holes. Screw-head seats are lowered 0.4 mm from the original design.
+Use the updated base together with the updated upper parts.
 Check actual switch and screw dimensions against the model. The legacy
 battery envelope is 50 × 35 × 6.5 mm with a XIAO-class controller; the v4 base
 does not yet contain physical electronics pockets or mounts.
@@ -107,11 +115,14 @@ does not yet contain physical electronics pockets or mounts.
 
 - `verify.py` rejects collisions in a simplified two-slab keycap OBB model
   and inadequate sampled bay headroom. It does not model every real keycap.
-- Full builds reject OpenSCAD failures, warnings, and nonempty intersections
-  with the modeled switch/cap/travel envelope. `--fast` skips mesh checks.
-- The v4 exporter requires exactly two connected upper components before
-  writing the finger sheet and thumb pod separately. Component counting is
-  not a manifoldness proof.
+- Full v4 builds require empty intersections for top/switch, base/switch,
+  top/base, and all seven screw heads against the switch/cap/travel envelope.
+  A 0.05 mm envelope clearance is cut into the upper sheet. `--fast` skips mesh
+  checks. Historical builds still reject OpenSCAD errors and warnings.
+- The exporter checks every edge for closure and consistent winding before
+  and after splitting the top into two print files. Vertical material probes
+  check all seven bearing rings, clear shafts, and the matching column seats.
+  CI checks the published files and performs a complete v4 build.
 - Orientation and flat-down patch audits report potential print issues; they
   do not establish that a printer can produce the part without supports.
 - The v1 wrist rest is not fitted to the v4 base. No dedicated left STLs,
@@ -126,12 +137,16 @@ does not yet contain physical electronics pockets or mounts.
 | `main3.py`, `main.py` | Earlier rod-supported and walled variants |
 | `web.py`, `skirt.py`, `bottom.py` | Plate connections and legacy case geometry |
 | `wrist.py`, `electronics.py` | Legacy wrist rest and electronics features |
-| `verify.py`, `devtool.py`, `render.py` | Layout checks, interference model, rendering |
+| `verify.py`, `devtool.py`, `render.py` | Layout checks, switch envelopes, legacy OpenSCAD rendering |
+| `mesh_backend.py`, `mesh_audit.py`, `stl_io.py` | Robust CSG evaluation, topology/seat checks, binary STL I/O |
 | `stl_components.py`, `stl_clean.py` | Mesh component inspection and sliver removal |
 | `gen_viewer.py`, `viewer.css`, `vendor/` | Offline viewer generation |
 
 `docs/` contains historical design and research notes, including abandoned
 experiments. Their older verdicts are not current verification results.
+
+The retained `devtool_right.stl` is the switch-envelope inspection asset used
+by the offline viewer and validation; it is not a printed part.
 
 ## Acknowledgments
 
@@ -140,6 +155,7 @@ The research notes study [Cosmos Keyboards](https://github.com/rianadon/Cosmos-K
 Dometyl placement and geometry approaches. Their names and source references
 are retained in the notes. Cosmotyl is an independent project.
 
-The viewer vendors three.js r147 under MIT; its full notice is in
+The mesh pipeline uses [Manifold](https://github.com/elalish/manifold) for
+solid modeling. The viewer vendors three.js r147 under MIT; its full notice is in
 [`src/vendor/three.LICENSE.txt`](src/vendor/three.LICENSE.txt) and embedded in
 the generated HTML. See [third-party notices](THIRD_PARTY_NOTICES.md).

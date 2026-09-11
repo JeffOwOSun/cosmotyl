@@ -1,0 +1,3 @@
+# Robust v4 solid modeling and STL export; legacy OpenSCAD builds remain optional.
+manifold3d==3.5.3
+numpy>=2.2,<3

@@ -31,16 +31,21 @@ def _plate(m):
 
 
 def _holes(m):
+    # Extend the clip relief below the plate to avoid a coincident bottom face.
+    # Its upper ledge stays 1.5 mm above the plate underside.
     mm = scad_mat(m)
     return (f'multmatrix({mm}) translate([0,0,{-CASE.plate_t / 2}]) '
             f'cube([{CASE.mx_hole},{CASE.mx_hole},{CASE.plate_t + 2}], center=true);'
-            f'multmatrix({mm}) translate([0,0,{-CASE.plate_t + 0.75}]) '
+            f'multmatrix({mm}) translate([0,0,{-CASE.plate_t + 0.25}]) '
             f'cube([{CASE.mx_hole + CASE.clip_undercut},'
-            f'{CASE.mx_hole + CASE.clip_undercut},1.5], center=true);')
+            f'{CASE.mx_hole + CASE.clip_undercut},2.5], center=true);')
 
 
-def finger_webs(layout):
+def finger_webs(layout, surface_inset=0.0, edge_inset=0.0):
     """Row/col/diagonal lofts between finger keys only (no thumb bridge)."""
+    def corner(m, sx, sy):
+        return post(m, sx, sy, surface_inset, edge_inset)
+
     out = []
     for c in range(len(COLUMNS)):
         for r in range(max(col.rows for col in COLUMNS)):
@@ -51,11 +56,11 @@ def finger_webs(layout):
             Dn = get(layout, c, r + 1)
             Dg = get(layout, c + 1, r + 1)
             if Rt:
-                out.append('hull() {%s%s%s%s}' % (post(A, HW, HD), post(A, HW, -HD),
-                                                  post(Rt, -HW, HD), post(Rt, -HW, -HD)))
+                out.append('hull() {%s%s%s%s}' % (corner(A, HW, HD), corner(A, HW, -HD),
+                                                  corner(Rt, -HW, HD), corner(Rt, -HW, -HD)))
             if Dn:
-                out.append('hull() {%s%s%s%s}' % (post(A, -HW, -HD), post(A, HW, -HD),
-                                                  post(Dn, -HW, HD), post(Dn, HW, HD)))
+                out.append('hull() {%s%s%s%s}' % (corner(A, -HW, -HD), corner(A, HW, -HD),
+                                                  corner(Dn, -HW, HD), corner(Dn, HW, HD)))
             corners = [(A, HW, -HD)]
             if Rt:
                 corners.append((Rt, -HW, -HD))
@@ -64,15 +69,18 @@ def finger_webs(layout):
             if Dg:
                 corners.append((Dg, -HW, HD))
             if len(corners) >= 3:
-                out.append('hull() {' + ''.join(post(m, sx, sy) for m, sx, sy in corners) + '}')
+                out.append('hull() {' + ''.join(corner(m, sx, sy) for m, sx, sy in corners) + '}')
     return out
 
 
-def pod_webs(layout):
+def pod_webs(layout, surface_inset=0.0, edge_inset=0.0):
     """Lofts between adjacent thumb keys only."""
+    def corner(m, sx, sy):
+        return post(m, sx, sy, surface_inset, edge_inset)
+
     t = [layout.thumb_frame(i) for i in range(THUMB.keys)]
-    return ['hull() {%s%s%s%s}' % (post(t[i], -HW, HD), post(t[i], -HW, -HD),
-                                   post(t[i + 1], HW, HD), post(t[i + 1], HW, -HD))
+    return ['hull() {%s%s%s%s}' % (corner(t[i], -HW, HD), corner(t[i], -HW, -HD),
+                                   corner(t[i + 1], HW, HD), corner(t[i + 1], HW, -HD))
             for i in range(THUMB.keys - 1)]
 
 

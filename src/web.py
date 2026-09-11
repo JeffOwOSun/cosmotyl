@@ -7,12 +7,12 @@ HD = CASE.key_d / 2
 POST = 0.8   # post cross-section; >0.1 so hulled sheets can't pinch to shards
 
 
-def post(m, sx, sy):
+def post(m, sx, sy, surface_inset=0.0, edge_inset=0.0):
     """Corner post, inset so its outer face lies exactly on the plate edge."""
-    ix = sx - POST / 2 if sx > 0 else sx + POST / 2
-    iy = sy - POST / 2 if sy > 0 else sy + POST / 2
+    ix = sx - POST / 2 - edge_inset if sx > 0 else sx + POST / 2 + edge_inset
+    iy = sy - POST / 2 - edge_inset if sy > 0 else sy + POST / 2 + edge_inset
     return (f'multmatrix({scad_mat(m)}) translate([{ix:.3f},{iy:.3f},{-CASE.plate_t / 2}]) '
-            f'cube([{POST},{POST},{CASE.plate_t}], center=true);')
+            f'cube([{POST},{POST},{CASE.plate_t - 2 * surface_inset:.5f}], center=true);')
 
 
 def plates_and_holes(layout):

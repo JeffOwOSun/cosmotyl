@@ -58,23 +58,13 @@ def pack(verts, tris, dx, dy):
     return base64.b64encode(pos).decode(), base64.b64encode(idx).decode()
 
 
-case_v, case_t = parse_stl(src_path('case_right.stl'))
-case3_v, case3_t = parse_stl(src_path('case3_right.stl'))
-uncut_v, uncut_t = parse_stl(src_path('uncut3_right.stl'))
-plate_v, plate_t = parse_stl(src_path('bottom_right.stl'))
-wrist_v, wrist_t = parse_stl(src_path('wrist_right.stl'))
 dev_v, dev_t = parse_stl(src_path('devtool_right.stl'))
 top4_v, top4_t = parse_stl(src_path('top4_right.stl'))
 base4_v, base4_t = parse_stl(src_path('base4_right.stl'))
-print(f'case: tris={len(case_t)} verts={len(case_v)}')
 print(f'v4: top tris={len(top4_t)} base tris={len(base4_t)}')
-print(f'case3: tris={len(case3_t)} verts={len(case3_v)}')
-print(f'uncut: tris={len(uncut_t)} verts={len(uncut_v)}')
-print(f'plate: tris={len(plate_t)} verts={len(plate_v)}')
-print(f'wrist: tris={len(wrist_t)} verts={len(wrist_v)}')
 print(f'devtool: tris={len(dev_t)} verts={len(dev_v)}')
 
-allv = case_v + plate_v + wrist_v
+allv = top4_v + base4_v + dev_v
 minx = min(v[0] for v in allv)
 miny = min(v[1] for v in allv)
 maxx = max(v[0] for v in allv) - minx
@@ -83,11 +73,6 @@ minz = min(v[2] for v in allv)
 maxz = max(v[2] for v in allv)
 print(f'bbox: W={maxx:.1f} H={maxy:.1f} D={maxz - minz:.1f}')
 
-case_pos, case_idx = pack(case_v, case_t, minx, miny)
-case3_pos, case3_idx = pack(case3_v, case3_t, minx, miny)
-uncut_pos, uncut_idx = pack(uncut_v, uncut_t, minx, miny)
-plate_pos, plate_idx = pack(plate_v, plate_t, minx, miny)
-wrist_pos, wrist_idx = pack(wrist_v, wrist_t, minx, miny)
 dev_pos, dev_idx = pack(dev_v, dev_t, minx, miny)
 top4_pos, top4_idx = pack(top4_v, top4_t, minx, miny)
 base4_pos, base4_idx = pack(base4_v, base4_t, minx, miny)
@@ -187,14 +172,10 @@ page = f"""<!DOCTYPE html>
     <div class="flex flex-col gap-1.5 text-xs">
       <label class="flex items-center gap-2"><input id="wire" type="checkbox"> Wireframe</label>
       <label class="flex items-center gap-2"><input id="left" type="checkbox" checked> Show left hand</label>
-      <label class="flex items-center gap-2"><input id="v4" type="checkbox" checked> v4 two-piece: top sheet + base</label>
-      <label class="flex items-center gap-2"><input id="v3" type="checkbox"> v3 body + rods + shell</label>
-      <label class="flex items-center gap-2"><input id="math" type="checkbox" checked> Thumb math constraint</label>
-      <label class="flex items-center gap-2"><input id="uncut" type="checkbox"> Uncut loft (before holes)</label>
-      <label class="flex items-center gap-2"><input id="v1" type="checkbox"> v1 shell body</label>
-      <label class="flex items-center gap-2"><input id="plate" type="checkbox"> Show bottom plate (v1)</label>
-      <label class="flex items-center gap-2"><input id="wrist" type="checkbox"> Show wrist rest (v1)</label>
-      <label class="flex items-center gap-2"><input id="dev" type="checkbox" checked> Switches + caps (devtool)</label>
+      <label class="flex items-center gap-2"><input id="top" type="checkbox" checked> Top sheet + thumb pod</label>
+      <label class="flex items-center gap-2"><input id="base" type="checkbox" checked> Base + screw columns</label>
+      <label class="flex items-center gap-2"><input id="math" type="checkbox"> Thumb math constraint</label>
+      <label class="flex items-center gap-2"><input id="dev" type="checkbox"> Switches + caps (devtool)</label>
     </div>
 
     <div class="mt-3 pt-2.5 border-t border-[var(--border)] text-[11px] leading-4 space-y-1">
@@ -215,11 +196,6 @@ page = f"""<!DOCTYPE html>
 (function () {{
   'use strict';
   const PARTS = {{
-    case: {{ pos: '{case_pos}', idx: '{case_idx}' }},
-    case3: {{ pos: '{case3_pos}', idx: '{case3_idx}' }},
-    uncut: {{ pos: '{uncut_pos}', idx: '{uncut_idx}' }},
-    plate: {{ pos: '{plate_pos}', idx: '{plate_idx}' }},
-    wrist: {{ pos: '{wrist_pos}', idx: '{wrist_idx}' }},
     dev: {{ pos: '{dev_pos}', idx: '{dev_idx}' }},
     top4: {{ pos: '{top4_pos}', idx: '{top4_idx}' }},
     base4: {{ pos: '{base4_pos}', idx: '{base4_idx}' }},
@@ -286,29 +262,9 @@ page = f"""<!DOCTYPE html>
     return g;
   }}
 
-  const caseMat = new THREE.MeshStandardMaterial({{
-    color: light ? 0x64748b : 0x7dd3fc,
-    roughness: 0.55, metalness: 0.15,
-    flatShading: true, side: THREE.DoubleSide,
-  }});
-  const plateMat = new THREE.MeshStandardMaterial({{
-    color: light ? 0x475569 : 0xf9a8d4,
-    roughness: 0.7, metalness: 0.05,
-    flatShading: true, side: THREE.DoubleSide,
-  }});
-  const wristMat = new THREE.MeshStandardMaterial({{
-    color: light ? 0xb45309 : 0xfcd34d,
-    roughness: 0.8, metalness: 0.0,
-    side: THREE.DoubleSide,
-  }});
   const case3Mat = new THREE.MeshStandardMaterial({{
     color: light ? 0x0f766e : 0x5eead4,
     roughness: 0.5, metalness: 0.1,
-    flatShading: true, side: THREE.DoubleSide,
-  }});
-  const uncutMat = new THREE.MeshStandardMaterial({{
-    color: light ? 0x7c3aed : 0xc4b5fd, transparent: true, opacity: 0.55,
-    roughness: 0.5, metalness: 0.0, depthWrite: false,
     flatShading: true, side: THREE.DoubleSide,
   }});
   const devMat = new THREE.MeshStandardMaterial({{
@@ -323,11 +279,6 @@ page = f"""<!DOCTYPE html>
     flatShading: true, side: THREE.DoubleSide,
   }});
 
-  const caseGeo = makeGeo(PARTS.case);
-  const case3Geo = makeGeo(PARTS.case3);
-  const uncutGeo = makeGeo(PARTS.uncut);
-  const plateGeo = makeGeo(PARTS.plate);
-  const wristGeo = makeGeo(PARTS.wrist);
   const devGeo = makeGeo(PARTS.dev);
   const top4Geo = makeGeo(PARTS.top4);
   const base4Geo = makeGeo(PARTS.base4);
@@ -377,17 +328,12 @@ page = f"""<!DOCTYPE html>
 
   const rightGroup = new THREE.Group();
   const leftGroup = new THREE.Group();
-  const rCase = new THREE.Mesh(caseGeo, caseMat), rPlate = new THREE.Mesh(plateGeo, plateMat);
-  const lCase = new THREE.Mesh(caseGeo, caseMat), lPlate = new THREE.Mesh(plateGeo, plateMat);
-  const rCase3 = new THREE.Mesh(case3Geo, case3Mat), lCase3 = new THREE.Mesh(case3Geo, case3Mat);
-  const rUncut = new THREE.Mesh(uncutGeo, uncutMat), lUncut = new THREE.Mesh(uncutGeo, uncutMat);
-  const rWrist = new THREE.Mesh(wristGeo, wristMat), lWrist = new THREE.Mesh(wristGeo, wristMat);
   const rDev = new THREE.Mesh(devGeo, devMat), lDev = new THREE.Mesh(devGeo, devMat);
   const rTop4 = new THREE.Mesh(top4Geo, case3Mat), lTop4 = new THREE.Mesh(top4Geo, case3Mat);
   const rBase4 = new THREE.Mesh(base4Geo, base4Mat), lBase4 = new THREE.Mesh(base4Geo, base4Mat);
   const rMath = makeMathGroup(), lMath = makeMathGroup();
-  rightGroup.add(rCase, rCase3, rUncut, rPlate, rWrist, rDev, rTop4, rBase4, rMath);
-  leftGroup.add(lCase, lCase3, lUncut, lPlate, lWrist, lDev, lTop4, lBase4, lMath);
+  rightGroup.add(rDev, rTop4, rBase4, rMath);
+  leftGroup.add(lDev, lTop4, lBase4, lMath);
   leftGroup.scale.set(-1, 1, 1);
   scene.add(rightGroup, leftGroup);
 
@@ -397,17 +343,13 @@ page = f"""<!DOCTYPE html>
     rightGroup.position.x = gap / 2;
     leftGroup.position.x = -gap / 2;
     leftGroup.visible = document.getElementById('left').checked;
-    rCase.visible = lCase.visible = document.getElementById('v1').checked;
-    rCase3.visible = lCase3.visible = document.getElementById('v3').checked;
-    rTop4.visible = lTop4.visible = rBase4.visible = lBase4.visible = document.getElementById('v4').checked;
-    rUncut.visible = lUncut.visible = document.getElementById('uncut').checked;
-    rPlate.visible = lPlate.visible = document.getElementById('plate').checked;
-    rWrist.visible = lWrist.visible = document.getElementById('wrist').checked;
+    rTop4.visible = lTop4.visible = document.getElementById('top').checked;
+    rBase4.visible = lBase4.visible = document.getElementById('base').checked;
     rDev.visible = lDev.visible = document.getElementById('dev').checked;
     rMath.visible = lMath.visible = document.getElementById('math').checked;
-    caseMat.wireframe = case3Mat.wireframe = base4Mat.wireframe = uncutMat.wireframe = plateMat.wireframe = wristMat.wireframe = document.getElementById('wire').checked;
+    case3Mat.wireframe = base4Mat.wireframe = document.getElementById('wire').checked;
   }}
-  for (const id of ['gap', 'wire', 'left', 'v1', 'v3', 'v4', 'math', 'uncut', 'plate', 'wrist', 'dev']) {{
+  for (const id of ['gap', 'wire', 'left', 'top', 'base', 'math', 'dev']) {{
     document.getElementById(id).addEventListener('input', apply);
   }}
 
